@@ -16,16 +16,37 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         
         guard let windowScene = (scene as? UIWindowScene) else { return }
         
-        let searchNavigationController = UINavigationController(rootViewController: SearchViewController())
-        let favoriteNavigationController = UINavigationController(rootViewController: FavoriteListViewController())
-        
-        let tabBarController = UITabBarController()
-        tabBarController.viewControllers = [searchNavigationController, favoriteNavigationController]
-        
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
         window?.windowScene = windowScene
-        window?.rootViewController = tabBarController
+        window?.rootViewController = createdTabBarController()
         window?.makeKeyAndVisible()
+    }
+    
+    func createdSearchNavigationController() -> UINavigationController {
+        let searchViewController = SearchViewController()
+        
+        searchViewController.title = "Search"
+        searchViewController.tabBarItem = UITabBarItem(tabBarSystemItem: .search, tag: 0)
+        
+        return UINavigationController(rootViewController: searchViewController)
+    }
+    
+    func createdFavoriteListViewController() -> UINavigationController {
+        let favoriteListViewController = FavoriteListViewController()
+        
+        favoriteListViewController.title = "Favorites"
+        favoriteListViewController.tabBarItem = UITabBarItem(tabBarSystemItem: .favorites, tag: 1)
+        
+        return UINavigationController(rootViewController: favoriteListViewController)
+    }
+    
+    func createdTabBarController() -> UITabBarController {
+        let tabBarController = UITabBarController()
+        
+        UITabBar.appearance().tintColor = . systemGreen
+        tabBarController.viewControllers = [createdSearchNavigationController(), createdFavoriteListViewController()]
+        
+        return tabBarController
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
