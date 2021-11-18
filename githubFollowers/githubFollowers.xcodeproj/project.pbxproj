@@ -15,6 +15,7 @@
 		B4DE12E22743F4BE00B62F45 /* FavoriteListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4DE12E12743F4BE00B62F45 /* FavoriteListViewController.swift */; };
 		B4DE12E5274515E200B62F45 /* GitHubFollowerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4DE12E4274515E200B62F45 /* GitHubFollowerButton.swift */; };
 		B4DE12E827451B1B00B62F45 /* GithubFollowerTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4DE12E727451B1B00B62F45 /* GithubFollowerTextField.swift */; };
+		B4DE12EF27467E6300B62F45 /* FollwerListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4DE12EE27467E6200B62F45 /* FollwerListViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 		B4DE12E12743F4BE00B62F45 /* FavoriteListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteListViewController.swift; sourceTree = "<group>"; };
 		B4DE12E4274515E200B62F45 /* GitHubFollowerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubFollowerButton.swift; sourceTree = "<group>"; };
 		B4DE12E727451B1B00B62F45 /* GithubFollowerTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GithubFollowerTextField.swift; sourceTree = "<group>"; };
+		B4DE12EE27467E6200B62F45 /* FollwerListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollwerListViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +71,7 @@
 				B4DE12E12743F4BE00B62F45 /* FavoriteListViewController.swift */,
 				B4DE12E4274515E200B62F45 /* GitHubFollowerButton.swift */,
 				B4DE12E727451B1B00B62F45 /* GithubFollowerTextField.swift */,
+				B4DE12EE27467E6200B62F45 /* FollwerListViewController.swift */,
 			);
 			path = githubFollowers;
 			sourceTree = "<group>";
@@ -144,6 +147,7 @@
 			files = (
 				B4DE12E22743F4BE00B62F45 /* FavoriteListViewController.swift in Sources */,
 				B4DE12E5274515E200B62F45 /* GitHubFollowerButton.swift in Sources */,
+				B4DE12EF27467E6300B62F45 /* FollwerListViewController.swift in Sources */,
 				B4DE12DF2743F49400B62F45 /* SearchViewController.swift in Sources */,
 				B4DE12C72743C43E00B62F45 /* AppDelegate.swift in Sources */,
 				B4DE12E827451B1B00B62F45 /* GithubFollowerTextField.swift in Sources */,

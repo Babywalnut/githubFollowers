@@ -20,7 +20,7 @@ class SearchViewController: UIViewController {
         configureLogoImageView()
         configureUserNameTextField()
         configureCallToActionButton()
-        createdismissKeyboardTapGesture()
+        createDismissKeyboardTapGesture()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -28,9 +28,17 @@ class SearchViewController: UIViewController {
         navigationController?.isNavigationBarHidden = true
     }
     
-    private func createdismissKeyboardTapGesture() {
+    private func createDismissKeyboardTapGesture() {
         let tap = UITapGestureRecognizer(target: self.view, action: #selector(UIView.endEditing))
         view.addGestureRecognizer(tap)
+    }
+    
+    @objc private func pushFollwerListViewController() {
+        let followerListViewController = FollwerListViewController()
+
+        followerListViewController.username = usernameTextField.text
+        followerListViewController.title = usernameTextField.text
+        navigationController?.pushViewController(followerListViewController, animated: true)
     }
     
     private func configureLogoImageView() {
@@ -60,6 +68,7 @@ class SearchViewController: UIViewController {
     
     private func configureCallToActionButton() {
         view.addSubview(callToActionButton)
+        callToActionButton.addTarget(self, action: #selector(pushFollwerListViewController), for: .touchUpInside)
         
         NSLayoutConstraint.activate([
             callToActionButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -50),
@@ -73,7 +82,7 @@ class SearchViewController: UIViewController {
 
 extension SearchViewController: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        print("Did Tap Return")
+        pushFollwerListViewController()
         return true
     }
 }
