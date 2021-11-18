@@ -13,6 +13,10 @@ class SearchViewController: UIViewController {
     let usernameTextField = GithubFollowerTextField()
     let callToActionButton = GitHubFollowerButton(backgroundColor: .systemGreen, title: "Get Followers")
     
+    var isUsernameEntered: Bool {
+        return !usernameTextField.text!.isEmpty
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -34,6 +38,12 @@ class SearchViewController: UIViewController {
     }
     
     @objc private func pushFollwerListViewController() {
+        
+        guard isUsernameEntered else {
+            print("No Username")
+            return
+        }
+        
         let followerListViewController = FollwerListViewController()
 
         followerListViewController.username = usernameTextField.text
