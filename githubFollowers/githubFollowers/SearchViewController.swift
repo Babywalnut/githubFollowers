@@ -40,7 +40,7 @@ class SearchViewController: UIViewController {
     @objc private func pushFollwerListViewController() {
         
         guard isUsernameEntered else {
-            print("No Username")
+            presentGithubFollwerAlertOnMainThread(title: "Empty Username", message: "Please enter a username. We need to know look for ☺️.", buttonTitle: "Ok")
             return
         }
         
