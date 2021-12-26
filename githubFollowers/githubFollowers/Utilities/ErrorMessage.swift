@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum ErrorMessage: String {
+enum GithubFollowerError: String, Error {
     case invalidUsername = "This username created an invalid request. Please try again."
     case unableToComplete = "Unable to commplete your request. Please check your internet connection."
     case invalidResponse = "Invalid response from the server. Please try again."
