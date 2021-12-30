@@ -1,52 +1,215 @@
-# githubFollowers - Feat.SearchVC, Custom Alert
+# githubFollowers - Feat.Networking
 
 ## 📕작업 배경
-- SearchViewController를 통하여 Github을 사용중인 User의 닉네임을 입력 받아야 합니다.
-- TextField에 입력된 값이 존재하 경우 text를 FollowerListViewController로 전달해야 합니다.
-- 입력된 값이 없을시 GitHubFollwersAlertViewController(CustomAlert)를 push하여 화면에 출력시켜야 합니다. 
+- 앱에서 사용할 데이터를 [Github API](https://docs.github.com/en/rest)로부터 JSON형태로 받아옵니다.
+- URLSession을 활용하여 API와 http통신(GET)을 합니다.
+- http통신을 진행할 때 API로 부터 전달받은 데이터, Response, 에러에 대한 처리를 해줍니다. 
 
 ## 🔨구현 내용
-- [RootViewController로 사용될 TabBarController 구현 -> SceneDelegate.swift](#rootviewcontroller-설정)
-- [SearchViewController UI 구현](#searchviewcontroller-ui-구현)
-- [GitHubFollwersAlertViewController UI 구현](#custom-alert-ui-구현)
-- [SearchViewController -> FollwerListViewController 데이터 전달 및 예외처리](#데이터전달-및-예외처리)
+- [API에서 받아온 JSON데이터를 Decoding할 Model구현](#model-구현)
+- [URLSession을 통하여 API와 통신할 네트워크 매니져 구현](#networkmanager-구현)
+- [Result Type을 통한 네트워크 매니저 Refactoring](#result-type-refactoring)
 
-### RootViewController 설정
+### Model 구현
+
+```swift
+struct User: Codable {
+    var login: String
+    var avatarUrl: String
+    var name: String?
+    var location: String?
+    var bio: String?
+    var publicRepos: Int
+    var publicGists: Int
+    var htmlUrl: String
+    var following: Int
+    var followers: Int
+    var createdAt: String
+}
+
+struct Follower: Codable {
+    var login: String
+    var avatarUrl: String
+}
+```
+[API문서](https://docs.github.com/en/rest/reference/users#get-a-user)에서 필요한 User, Follower의 JSON Key를 확인하여 필요한 모델을 구현했습니다.
+
+GitHub 계정에 따라 존재하지 않을 수도 있는 값에 대해선 model 프로퍼티 타입의 Optional타입으로 선언하였습니다.
+
+decoding시에 `.convertFromSnakeCase`를 사용하기 위해 CodingKey를 사용하지 않았습니다.
 
 
-<img width="676" alt="스크린샷 2021-12-13 오후 2 15 00" src="https://user-images.githubusercontent.com/56648865/145756471-3576dfc7-da92-45cd-994e-6efa37dd33e7.png">
+### NetworkManager 구현
 
-- TabBarController와 NavigationController를 설정해주는 swift파일을 따로 생성해주지 않고 SceneSession을 설정해주는 SceneDelegate 내에서 메서드의 반환값으로 인스턴스를 바로 생성하여  RootViewController에 할당하였습니다.
-- 앱 내의 모드 TabBar와 NavigationBar의 tintColor를 통일시켰습니다.
+```swift
+class NetworkManager {
+    static let shared = NetworkManager()
+    let baseURL = "https://api.github.com/users/"
+    
+    private init() {}
+    
+    func getFollowers(for username: String, page: Int, completion: @escaping (Result<[Follower], GithubFollowerError>) -> Void) {
+        let endpoint = baseURL + "\(username)/followers?_per_page=100&page=\(page)"
+        
+        guard let url = URL(string: endpoint) else {
+            completion(.failure(.invalidUsername))
+            return
+        }
+        
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            
+            if let _ = error {
+                completion(.failure(.unableToComplete))
+            }
+            
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+                completion(.failure(.invalidResponse))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(.invalidData))
+                return
+            }
+            
+            do {
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                let followers = try decoder.decode([Follower].self, from: data)
+                completion(.success(followers))
+            } catch {
+                completion(.failure(.invalidData))
+            }
+        }
+        
+        task.resume()
+    }
+}
+```
+#### NetworkManager Singleton으로 구현한 이유
+- NetworkManager객체의 특성상 싱글턴으로 구현된 URLSession.shared 객체, 즉 제한된 자원을 통해 작업을하는 객체이기 때문에 동작의 직관적인 이해를 위하여 싱글턴으로 구현하였습니다.
 
-### SearchViewController UI 구현
+#### Singleton으로 구현하여 발생할 수 있는 문제점
+- 싱글턴 객체인 URLSession의 shared 객체가 아닌 예를들어 테스트 객체 MockURLSession을 구현하여 테스트 용도로 사용하려할 때 싱글턴의 특성상 private init()으로 인하여 다른 형태의 URLSession 객체를 주입받을 수 없게됩니다.
 
-<img width="850" alt="스크린샷 2021-12-13 오후 3 54 09" src="https://user-images.githubusercontent.com/56648865/145766792-9de62830-bed0-444b-a314-f11010029adb.png">
-
-
-- custom TextField, custom Button 사용
-- 항상 view가 나타날 때마다 SearchViewController의 NavigationBar를 가려주기 위하여 viewWillAppear()에서 설정
-
+#### URLSession shard객체 사용
+- URLSession configuration을 통하여 앱의 상태에 따른 동작, 캐싱에 대해서 별다른 설정을 해주지않기 때문에 사용하였습니다.
+- shared 객체를 사용할시에는 task실행데 대한 결과값의 검증 및 사용을 completion Handler에서 처리하게 됩니다.
 
 
 
-### Custom Alert UI 구현
+### Result Type Refactoring
 
-<img width="850" alt="스크린샷 2021-12-13 오후 5 32 25" src="https://user-images.githubusercontent.com/56648865/145778408-5695b2c3-b6ce-49e2-8a6b-8ea12aed602d.png">
+#### 수정 전
 
-- containerView를 생성하여 Alert 생성
-- background의 투명도를 조절하여 .overFullScreen으로 present하지만 containerView 영역만 전달내용 출력
+```swift
+ func getFollowers(for username: String, page: Int, completion: @escaping ([Follower]?, ErrorMessage?) -> Void) {
+        let endpoint = baseURL + "\(username)/followers?_per_page=100&page=\(page)"
+        
+        guard let url = URL(string: endpoint) else {
+            completion(nil, .invalidUsername)
+            return
+        }
+        
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            
+            if let _ = error {
+                completion(nil, .unableToComplete)
+            }
+            
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+                completion(nil, .invalidData)
+                return
+            }
+            
+            guard let data = data else {
+                completion(nil, .invalidData)
+                return
+            }
+            
+            do {
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                let followers = try decoder.decode([Follower].self, from: data)
+                completion(followers, nil)
+            } catch {
+                completion(nil, .invalidData)
+            }
+        }
+        
+        task.resume()
+    }
+```
 
-### 데이터전달 및 예외처리
+```swift
+NetworkManager.shared.getFollowers(for: username, page: 1) { (followers, errorMessage) in
+            guard let followers = followers else {
+                self.presentGithubFollwerAlertOnMainThread(title: "Bad Stuff Happened", message: errorMessage!.rawValue, buttonTitle: "Ok")
+                return
+            }
+            
+            print("Followers.count = \(followers.count)")
+            print(followers)
+```
 
-<img width="789" alt="스크린샷 2021-12-13 오후 6 58 50" src="https://user-images.githubusercontent.com/56648865/145791295-5ac6bff0-0e77-4e73-9554-956becb49d37.png">
+- dataTask()동작이 이루어지면서 받아온 error, response, data에 대하여 처리를 한 뒤 completion 코드를 실행하는 메서드입니다. getFollower() 메서드의 completion parameter타입을 ([Followers]?, ErrorMessage?)로 구현하였습니다. completion Handler 호출시 전달되는 argument들을 따로따로 직접 전달해야합니다. 또한 getFollower()메서드 호출시 전달된 argument에 대해서 옵셔널 바인딩을 통하여 처리를 해주었습니다.
 
-- TextField의 text를 FollwerListViewController의 title로 전달
-- View Hierarchy 상으로 하위에 존재하는 SearchViewController에서 FollwerListViewController로 데이터를 전달하는 것이기 때문에 직접전달로 구현
-- TextField의 text가 입력되지 않을 경우 custom Alert 출력
+### 수정 후
 
+```swift
+func getFollowers(for username: String, page: Int, completion: @escaping (Result<[Follower], GithubFollowerError>) -> Void) {
+        let endpoint = baseURL + "\(username)/followers?_per_page=100&page=\(page)"
+        
+        guard let url = URL(string: endpoint) else {
+            completion(.failure(.invalidUsername))
+            return
+        }
+        
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            
+            if let _ = error {
+                completion(.failure(.unableToComplete))
+            }
+            
+            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
+                completion(.failure(.invalidResponse))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(.invalidData))
+                return
+            }
+            
+            do {
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                let followers = try decoder.decode([Follower].self, from: data)
+                completion(.success(followers))
+            } catch {
+                completion(.failure(.invalidData))
+            }
+        }
+        
+        task.resume()
+    }
+```
+
+```swift
+        NetworkManager.shared.getFollowers(for: username, page: 1) { result in
+            
+            switch result {
+            case .success(let followers):
+                print("Followers.count = \(followers.count)")
+                print(followers)
+            case .failure(let error):
+                self.presentGithubFollwerAlertOnMainThread(title: "Bad Stuff Happened", message: error.rawValue, buttonTitle: "Ok")
+```
+
+- getFollower()메서드의 parameter 타입을 Result타입으로 선언해줬습니다. completion()호출시에 .success, .failure를 통한 더 직관적으로 이해하기 쉬운 코드를 작성할 수 있습니다. Result 타입은 Generic Enum 타입으로 정의되어 있기때문에 getFollower()호출시 completion handler코드에 .success, .failure case를 통하여 직관적으로 처리해줄 수 있습니다.
 
 ## 📝학습 내용
-
-- navigationController?.isNavgationHidden은 현재 viewController가 포함된 navigationController의 모든 viewController에 적용된다.
-- Delegate Pattern을 통하여 데이터를 전달할 시에는 데이터를 받는 인스턴스가 delegate로 선언되기 이전에는 데이터를 전달할 수 없다.
+- URLSession
+- URL Loading System
+- Fetching website Data into Memory
+- Singleton
