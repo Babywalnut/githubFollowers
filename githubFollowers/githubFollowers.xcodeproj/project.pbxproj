@@ -11,6 +11,7 @@
 		B4782D6A27734D5500610F11 /* ErrorMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4782D6927734D5500610F11 /* ErrorMessage.swift */; };
 		B4782D73277E1A1500610F11 /* FollowerCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4782D72277E1A1500610F11 /* FollowerCell.swift */; };
 		B4782D77277E1AA300610F11 /* GithubFollowerAvatarImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4782D76277E1AA300610F11 /* GithubFollowerAvatarImageView.swift */; };
+		B4782D7C277F1DE700610F11 /* UIHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4782D7B277F1DE700610F11 /* UIHelper.swift */; };
 		B4C299212767807D00550FB9 /* Follower.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C299202767807D00550FB9 /* Follower.swift */; };
 		B4C299292767815900550FB9 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C299282767815900550FB9 /* User.swift */; };
 		B4DE12C72743C43E00B62F45 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4DE12C62743C43E00B62F45 /* AppDelegate.swift */; };
@@ -33,6 +34,7 @@
 		B4782D6927734D5500610F11 /* ErrorMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorMessage.swift; sourceTree = "<group>"; };
 		B4782D72277E1A1500610F11 /* FollowerCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowerCell.swift; sourceTree = "<group>"; };
 		B4782D76277E1AA300610F11 /* GithubFollowerAvatarImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GithubFollowerAvatarImageView.swift; sourceTree = "<group>"; };
+		B4782D7B277F1DE700610F11 /* UIHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIHelper.swift; sourceTree = "<group>"; };
 		B4C299202767807D00550FB9 /* Follower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Follower.swift; sourceTree = "<group>"; };
 		B4C299282767815900550FB9 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		B4DE12C32743C43E00B62F45 /* githubFollowers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = githubFollowers.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +77,7 @@
 			isa = PBXGroup;
 			children = (
 				B4782D6927734D5500610F11 /* ErrorMessage.swift */,
+				B4782D7B277F1DE700610F11 /* UIHelper.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -244,6 +247,7 @@
 				B4DE12F2274CFA3800B62F45 /* GithubFollowerTitleLabel.swift in Sources */,
 				B4DE12E22743F4BE00B62F45 /* FavoriteListViewController.swift in Sources */,
 				B4DE12E5274515E200B62F45 /* GitHubFollowerButton.swift in Sources */,
+				B4782D7C277F1DE700610F11 /* UIHelper.swift in Sources */,
 				B4DE12FB274D110F00B62F45 /* UIViewController+Ext.swift in Sources */,
 				B4DE12EF27467E6300B62F45 /* FollwerListViewController.swift in Sources */,
 				B4DE12F5274CFBC600B62F45 /* GithubFollowerBodyLabel.swift in Sources */,
