@@ -40,6 +40,8 @@ extension UIViewController {
             activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor )
         ])
+        
+        activityIndicator.startAnimating()
     }
     
     func dismissLoadingView() {
