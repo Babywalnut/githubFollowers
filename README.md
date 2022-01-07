@@ -1,215 +1,231 @@
-# githubFollowers - Feat.Networking
+# githubFollowers - Feat.CollectionView
 
 ## 📕작업 배경
-- 앱에서 사용할 데이터를 [Github API](https://docs.github.com/en/rest)로부터 JSON형태로 받아옵니다.
-- URLSession을 활용하여 API와 http통신(GET)을 합니다.
-- http통신을 진행할 때 API로 부터 전달받은 데이터, Response, 에러에 대한 처리를 해줍니다. 
+- FollowerListView Controller에 CollectionView를 활용하여 입력한 user에 대한 follower 계정 정보를 출력합니다.(follower 없을시 예외처리)
+- 받아온 follower 데이터 중 avatarURL을 활용하여 이미지를 받아오고 이미지에 대한 캐싱처리를 합니다.
+- SearchBar를 통하여 출력된 follower 정보를 filtering하여 보여줍니다.
 
 ## 🔨구현 내용
-- [API에서 받아온 JSON데이터를 Decoding할 Model구현](#model-구현)
-- [URLSession을 통하여 API와 통신할 네트워크 매니져 구현](#networkmanager-구현)
-- [Result Type을 통한 네트워크 매니저 Refactoring](#result-type-refactoring)
+- [CollectionView 구현](#collectionview-구현)
+    - [FlowLayout 적용](#flowlayout-생성)
+    - [DiffableDataSource 적용](#diffabledatasource-적용)
+- [ARC, CaptureList를 활용한 Memory Leak 방지](#capturelist-메모리-누수-방지)
+- [이미지 캐싱처리](#이미지-캐싱처리)
+- [Follower 정보에 대한 Paginating 구현](#paginating-and-loadingview-구현)
+- [SearchBar 기능 구현](#searchbar-기능-구현)
+<br><br>
 
-### Model 구현
+
+### CollectionView 구현
+
+#### FlowLayout 생성
+
+<img width="225" alt="스크린샷 2022-01-03 오후 9 17 46" src="https://user-images.githubusercontent.com/56648865/147929495-b9666491-18a5-49a2-a967-f97bf7862834.png">
 
 ```swift
-struct User: Codable {
+struct UIHelper {
+    static func createdThreeColumnFlowLayout(in view: UIView) -> UICollectionViewFlowLayout {
+        let width = view.bounds.width
+        let padding: CGFloat = 12
+        let minimumItemSpacing: CGFloat = 10
+        let availableWidth = width - (padding * 2) - (minimumItemSpacing * 2)
+        let itemWidth = availableWidth / 3
+        
+        let flowLayout = UICollectionViewFlowLayout()
+        flowLayout.sectionInset = UIEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
+        flowLayout.itemSize = CGSize(width: itemWidth, height: itemWidth + 40)
+        
+        return flowLayout
+    }
+}
+```
+- grid형태의 Layout을 구현하기 위해 FlowLayout을 적용했습니다. 세로 scroll을 위해 default scrollDirection을 사용했고 각 item의 사이즈는 `view.bounds` 너비에 세 개씩 출력되도록 수치값을 계산하였으며 섹션 전체에 마진을 주었습니다.
+<br>
+
+
+#### DiffableDataSource 적용
+
+![화면 기록 2022-01-05 오후 2 49 06](https://user-images.githubusercontent.com/56648865/148171323-99bca1be-32be-40aa-b1da-ed4044f0836a.gif)
+![화면 기록 2022-01-05 오후 3 04 18](https://user-images.githubusercontent.com/56648865/148170677-e7a42214-4246-49d4-9d5e-f071f5e4f1e2.gif)
+
+
+<왼쪽: 기존 DataSource, 오른쪽: DiffableDataSource>
+
+- **DiffableDataSource를 사용한 이유:**<br>
+    - animation효과를 사용하여 더 나은 UX, 즉 SearchBarResult에 따라 자연스럽게 갱신되는 CollectionView를 구현하기위하여 적용하였습니다.
+    - 기존 DataSource는 변경될 데이터를 DataSource에게 따로 알려주고 reloadData()메서드를 통하여 DataSource의 변경사항을 직접 UI에 동기화해줘야하는 번거로움이 있었지만 `DiffableDataSource는 갱신될 상태를 Snapshot을 구성하고 apply() 해주기만하면 UI에 적용되기 때문에 유지보수 측면에서도 편하다고 판단하여 적용하였습니다.
+<br><br>
+
+- **Hashable**
+```swift
+func configureDataSource() {
+    dataSource = UICollectionViewDiffableDataSource<Section, Follower>(collectionView: collectionView, cellProvider: { (collectionView, indexPath, follower) -> UICollectionViewCell? in
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: FollowerCell.reuseID, for: indexPath) as! FollowerCell
+        cell.set(follower: follower)
+            
+        return cell
+        })
+    }
+```
+
+기존에 DataSource메서드인 CellForRowAt에서 처리해주던 코드를 DiffableDataSource이 instantiate될 때 cellProvider를 통해 전달해줍니다. General type인 DiffableDataSource에게 Section Identifier와 Item Identifier를 알려주어야 합니다.  
+
+    
+```swift
+struct Follower: Codable, Hashable {
     var login: String
     var avatarUrl: String
-    var name: String?
-    var location: String?
-    var bio: String?
-    var publicRepos: Int
-    var publicGists: Int
-    var htmlUrl: String
-    var following: Int
-    var followers: Int
-    var createdAt: String
-}
-
-struct Follower: Codable {
-    var login: String
-    var avatarUrl: String
 }
 ```
-[API문서](https://docs.github.com/en/rest/reference/users#get-a-user)에서 필요한 User, Follower의 JSON Key를 확인하여 필요한 모델을 구현했습니다.
+```swift
+enum Section {
+   case main
+}
+```
+ Section 과 Item으로써 전달되는 타입은 모두 Hashable을 채택하고 있어야합니다. enum은 custom type을 사용하지 않는한 Hashable이 자동 적용되고 Follower type에서는 모든 프로퍼티가 Hashable하기 때문에 `hash(into:)`에 대한 처리없이 Hashable만 채택해주었습니다.
+<br><br>
 
-GitHub 계정에 따라 존재하지 않을 수도 있는 값에 대해선 model 프로퍼티 타입의 Optional타입으로 선언하였습니다.
-
-decoding시에 `.convertFromSnakeCase`를 사용하기 위해 CodingKey를 사용하지 않았습니다.
-
-
-### NetworkManager 구현
+### CaptureList 메모리 누수 방지
 
 ```swift
-class NetworkManager {
-    static let shared = NetworkManager()
-    let baseURL = "https://api.github.com/users/"
+class FollowerListViewController: UIViewController {
     
-    private init() {}
+    // code
     
-    func getFollowers(for username: String, page: Int, completion: @escaping (Result<[Follower], GithubFollowerError>) -> Void) {
-        let endpoint = baseURL + "\(username)/followers?_per_page=100&page=\(page)"
-        
-        guard let url = URL(string: endpoint) else {
-            completion(.failure(.invalidUsername))
-            return
-        }
-        
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            
-            if let _ = error {
-                completion(.failure(.unableToComplete))
-            }
-            
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-                completion(.failure(.invalidResponse))
-                return
-            }
-            
-            guard let data = data else {
-                completion(.failure(.invalidData))
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let followers = try decoder.decode([Follower].self, from: data)
-                completion(.success(followers))
-            } catch {
-                completion(.failure(.invalidData))
-            }
-        }
-        
-        task.resume()
-    }
-}
-```
-#### NetworkManager Singleton으로 구현한 이유
-- NetworkManager객체의 특성상 싱글턴으로 구현된 URLSession.shared 객체, 즉 제한된 자원을 통해 작업을하는 객체이기 때문에 동작의 직관적인 이해를 위하여 싱글턴으로 구현하였습니다.
-
-#### Singleton으로 구현하여 발생할 수 있는 문제점
-- 싱글턴 객체인 URLSession의 shared 객체가 아닌 예를들어 테스트 객체 MockURLSession을 구현하여 테스트 용도로 사용하려할 때 싱글턴의 특성상 private init()으로 인하여 다른 형태의 URLSession 객체를 주입받을 수 없게됩니다.
-
-#### URLSession shard객체 사용
-- URLSession configuration을 통하여 앱의 상태에 따른 동작, 캐싱에 대해서 별다른 설정을 해주지않기 때문에 사용하였습니다.
-- shared 객체를 사용할시에는 task실행데 대한 결과값의 검증 및 사용을 completion Handler에서 처리하게 됩니다.
-
-
-
-### Result Type Refactoring
-
-#### 수정 전
-
-```swift
- func getFollowers(for username: String, page: Int, completion: @escaping ([Follower]?, ErrorMessage?) -> Void) {
-        let endpoint = baseURL + "\(username)/followers?_per_page=100&page=\(page)"
-        
-        guard let url = URL(string: endpoint) else {
-            completion(nil, .invalidUsername)
-            return
-        }
-        
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            
-            if let _ = error {
-                completion(nil, .unableToComplete)
-            }
-            
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-                completion(nil, .invalidData)
-                return
-            }
-            
-            guard let data = data else {
-                completion(nil, .invalidData)
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let followers = try decoder.decode([Follower].self, from: data)
-                completion(followers, nil)
-            } catch {
-                completion(nil, .invalidData)
-            }
-        }
-        
-        task.resume()
-    }
-```
-
-```swift
-NetworkManager.shared.getFollowers(for: username, page: 1) { (followers, errorMessage) in
-            guard let followers = followers else {
-                self.presentGithubFollwerAlertOnMainThread(title: "Bad Stuff Happened", message: errorMessage!.rawValue, buttonTitle: "Ok")
-                return
-            }
-            
-            print("Followers.count = \(followers.count)")
-            print(followers)
-```
-
-- dataTask()동작이 이루어지면서 받아온 error, response, data에 대하여 처리를 한 뒤 completion 코드를 실행하는 메서드입니다. getFollower() 메서드의 completion parameter타입을 ([Followers]?, ErrorMessage?)로 구현하였습니다. completion Handler 호출시 전달되는 argument들을 따로따로 직접 전달해야합니다. 또한 getFollower()메서드 호출시 전달된 argument에 대해서 옵셔널 바인딩을 통하여 처리를 해주었습니다.
-
-### 수정 후
-
-```swift
-func getFollowers(for username: String, page: Int, completion: @escaping (Result<[Follower], GithubFollowerError>) -> Void) {
-        let endpoint = baseURL + "\(username)/followers?_per_page=100&page=\(page)"
-        
-        guard let url = URL(string: endpoint) else {
-            completion(.failure(.invalidUsername))
-            return
-        }
-        
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            
-            if let _ = error {
-                completion(.failure(.unableToComplete))
-            }
-            
-            guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
-                completion(.failure(.invalidResponse))
-                return
-            }
-            
-            guard let data = data else {
-                completion(.failure(.invalidData))
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                decoder.keyDecodingStrategy = .convertFromSnakeCase
-                let followers = try decoder.decode([Follower].self, from: data)
-                completion(.success(followers))
-            } catch {
-                completion(.failure(.invalidData))
-            }
-        }
-        
-        task.resume()
-    }
-```
-
-```swift
-        NetworkManager.shared.getFollowers(for: username, page: 1) { result in
-            
+    var followers: [Follower] = []
+    
+    //code
+    
+    func getFollwers(username: String, page: Int) {
+        showLoadingView()
+        NetworkManager.shared.getFollowers(for: username, page: page) { [weak self] result in
+            guard let self = self else { return }
+            self.dismissLoadingView()
             switch result {
             case .success(let followers):
-                print("Followers.count = \(followers.count)")
-                print(followers)
+                if followers.count < 100 {
+                    self.hasMoreFollowers = false
+                }
+                self.followers.append(contentsOf: followers)
+                
+                if self.followers.isEmpty {
+                    let message = "This user doesn't have any followers. Go follow them ☺️."
+                    DispatchQueue.main.async {
+                        self.showEmptyStateView(with: message, in: self.view)
+                    }
+                }
+                
+                self.updateData(on: self.followers)
+                
             case .failure(let error):
                 self.presentGithubFollwerAlertOnMainThread(title: "Bad Stuff Happened", message: error.rawValue, buttonTitle: "Ok")
+            }
+        }
+    }
 ```
 
-- getFollower()메서드의 parameter 타입을 Result타입으로 선언해줬습니다. completion()호출시에 .success, .failure를 통한 더 직관적으로 이해하기 쉬운 코드를 작성할 수 있습니다. Result 타입은 Generic Enum 타입으로 정의되어 있기때문에 getFollower()호출시 completion handler코드에 .success, .failure case를 통하여 직관적으로 처리해줄 수 있습니다.
+위의 코드에서는 NetworkManager 인스턴스의 getFollowers()메서드가 실행되면서 전달되는 escaping closure 코드에서 **참조 타입인 FollowerListViewController**를 self로써 참조하고 있습니다. 때문에 NetworkManager는 FollowerListViewController를 강하게 참조하고 있고 NetworkManager 또한 FollowerListViewContorller의 getFollowers메서드에서 참조되어 지고 있습니다. 이는 강한 순환참조를 만들게됩니다. reference count가 올라가지 않게하여 capture list인 `[weak self]`를 통하여 이를 방지해주었습니다.
+<br><br>
+
+### 이미지 캐싱처리
+
+- CollectionView scroll시 계속해서 네트워킹 작업을하여 이미지를 다운받아 업로드가 이루어지는 것은 비효율적이기 때문에 앱이 종료되기 이전까지는 이미 다운로드 받았던 이미지일 경우에는 메모리에서 가져와서 사용하도록 NSCache를 통해 메모리캐싱을 구현하였습니다.
+- NetworkManger에 내부에 구현하여 싱글톤 인스턴스를 통해 단하나만 사용되도록 구현하였습니다.
+<br><br>
+
+### Paginating & LadingView 구현
+
+![화면 기록 2022-01-07 오후 8 03 42](https://user-images.githubusercontent.com/56648865/148535251-c700d6d1-0c77-46a1-8528-77b690ea704f.gif)
+
+```swift
+"https://api.github.com/users/\(username)/followers?per_page=100&page=\(page)"
+```
+
+- API의 endpoint URL에 100개의 사진씩 불러오도록 명시하였습니다.
+
+```swift
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        let offsetY = scrollView.contentOffset.y
+        let contentHeight = scrollView.contentSize.height
+        let height = scrollView.frame.size.height
+        
+        if offsetY > contentHeight - height {
+            guard hasMoreFollowers else { return }
+            page += 1
+            getFollwers(username: username, page: page)
+        }
+```
+
+- 만약 CollectionView에서 드래그한 스크롤범위가 전체 contents영역의 높이에서 화면의 frame높이를 뺀것보다 더 길면, 즉 화면의 끝까지 드래그를 하면 다시한번 네트워크 요청을 통해 그 다음 100개의 data를 받아오도록 구현하였습니다.
+
+```swift
+    func showLoadingView() {
+        containerView = UIView(frame: view.bounds)
+        view.addSubview(containerView)
+        
+        containerView.backgroundColor = .systemBackground
+        containerView.alpha = 0
+        
+        UIView.animate(withDuration: 0.25) {
+            containerView.alpha = 0.8
+        }
+        
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        containerView.addSubview(activityIndicator)
+        
+        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+        
+        NSLayoutConstraint.activate([
+            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor )
+        ])
+        
+        activityIndicator.startAnimating()
+    }
+    
+    func dismissLoadingView() {
+        DispatchQueue.main.async {
+            containerView.removeFromSuperview()
+            containerView = nil
+        }
+    }
+```
+
+- containerView를 활용하여 메서드 실행시 animate효과를 사용하여 containerView의 투명도를 조절하여 화면에 출력합니다. 
+- activityIndicator를 이용하여 처리하고있는 작업이 진행중이면 containerView가 dismiss되지 않고 로딩 하는 animation이 출력되도록 합니다.
+
+<img width="753" alt="스크린샷 2022-01-07 오후 8 25 55" src="https://user-images.githubusercontent.com/56648865/148537522-13241220-b795-442e-a43f-b0992afbde5c.png">
+
+
+- showloadingView를 구현하여 NetworkManager의 getFollowers메서드가 실행되기 직전에 띄우고 getFollowers메서드가 실행이 끝나고 completionHandler가 실행될 때, 즉 데이터를 이미 받아온 후 사라지게 구현하였습니다.
+<br><br>
+
+
+### SearchBar 기능 구현
+
+```swift
+extension FollowerListViewController: UISearchResultsUpdating {
+    
+    func updateSearchResults(for searchController: UISearchController) {
+        guard let filter = searchController.searchBar.text, !filter.isEmpty else { return }
+        filteredFollowers = followers.filter { $0.login.lowercased().contains(filter.lowercased())
+        }
+        updateData(on: filteredFollowers)
+    }
+}
+
+extension FollowerListViewController: UISearchBarDelegate {
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        updateData(on: followers)
+    }
+}
+
+```
+- UISearchResultsUpdating을 채택하여 SearchBar에 입력이 될경우 입력된 값으로 filter메서드를 적용하여 filterdFollowers배열에 결과를 저장하고 이를 snapshot에 적용하여 colletionView를 갱신시켜 줍니다.
+- UISearchBarDelegate를 채택하여 SearchBar의 Cancel버튼을 클릭할시 기존의 전체 데이터가 담겨있는 followers배열을 통해 다시 새로운 snapshot을 적용하여 collectionView를 갱신시켜 줍니다.
 
 ## 📝학습 내용
-- URLSession
-- URL Loading System
-- Fetching website Data into Memory
-- Singleton
+- UICollectionView
+- DiffableDataSource
+- Closure Capture & Capture list
+- Memory Cache

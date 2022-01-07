@@ -44,7 +44,7 @@ class SearchViewController: UIViewController {
             return
         }
         
-        let followerListViewController = FollwerListViewController()
+        let followerListViewController = FollowerListViewController()
 
         followerListViewController.username = usernameTextField.text
         followerListViewController.title = usernameTextField.text
